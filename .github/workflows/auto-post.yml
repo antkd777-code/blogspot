@@ -1,0 +1,52 @@
+name: Auto Blog Post
+
+on:
+  schedule:
+    # 한국시간 08:00 (UTC 23:00 전날) — 하루 2회
+    - cron: '0 23 * * *'
+    # 한국시간 20:00 (UTC 11:00)
+    - cron: '0 11 * * *'
+  workflow_dispatch:
+    inputs:
+      keyword_override:
+        description: '특정 키워드 직접 입력 (선택)'
+        required: false
+
+jobs:
+  publish-post:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Generate and publish post
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
+          BLOGGER_BLOG_ID: ${{ secrets.BLOGGER_BLOG_ID }}
+          KEYWORD_OVERRIDE: ${{ github.event.inputs.keyword_override }}
+        run: python scripts/main.py
+
+      - name: Commit updated keywords CSV
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add keywords/keywords.csv
+          git diff --staged --quiet || git commit -m "chore: mark keyword as used [skip ci]"
+          git push

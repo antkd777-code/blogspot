@@ -1,0 +1,7 @@
+.env
+*.json
+!package.json
+__pycache__/
+*.pyc
+.refresh_token_backup.json
+.venv/
